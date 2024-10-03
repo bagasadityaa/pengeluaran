@@ -1,70 +1,98 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, Button, FlatList } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const FinanceTracker = () => {
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [transactions, setTransactions] = useState([]);
 
-export default function HomeScreen() {
+  // Menyimpan data ke local storage
+  const saveTransaction = async (newTransaction) => {
+    try {
+      const updatedTransactions = [...transactions, newTransaction];
+      await AsyncStorage.setItem('transactions', JSON.stringify(updatedTransactions));
+      setTransactions(updatedTransactions);
+    } catch (e) {
+      console.log('Gagal menyimpan transaksi', e);
+    }
+  };
+
+  // Mengambil data dari local storage
+  const loadTransactions = async () => {
+    try {
+      const savedTransactions = await AsyncStorage.getItem('transactions');
+      if (savedTransactions !== null) {
+        setTransactions(JSON.parse(savedTransactions));
+      }
+    } catch (e) {
+      console.log('Gagal mengambil transaksi', e);
+    }
+  };
+
+  // Mengambil transaksi saat aplikasi dibuka kembali
+  useEffect(() => {
+    loadTransactions();
+  }, []);
+
+  // Menambahkan transaksi (pendapatan atau pengeluaran)
+  const addTransaction = (type) => {
+    const newTransaction = {
+      id: Date.now(),
+      description: description,
+      amount: parseFloat(amount),
+      type: type, // "income" untuk pendapatan, "expense" untuk pengeluaran
+      date: new Date().toLocaleString(), // Menyimpan tanggal dan waktu
+    };
+
+    saveTransaction(newTransaction);
+    setAmount(''); // Reset input
+    setDescription('');
+  };
+
+  // Menghitung total pendapatan dan pengeluaran
+  const calculateTotal = (type) => {
+    return transactions
+      .filter((transaction) => transaction.type === type)
+      .reduce((total, transaction) => total + transaction.amount, 0);
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({ ios: 'cmd + d', android: 'cmd + m' })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
-}
+    <View style={{ padding: 20 }}>
+      <Text style={{ fontSize: 24 }}>Finance Tracker</Text>
+      <Text>Total Pendapatan: Rp {calculateTotal('income')}</Text>
+      <Text>Total Pengeluaran: Rp {calculateTotal('expense')}</Text>
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+      <TextInput
+        placeholder="Deskripsi"
+        value={description}
+        onChangeText={setDescription}
+        style={{ borderWidth: 1, marginBottom: 10, padding: 5 }}
+      />
+      <TextInput
+        placeholder="Jumlah"
+        value={amount}
+        onChangeText={setAmount}
+        keyboardType="numeric"
+        style={{ borderWidth: 1, marginBottom: 10, padding: 5 }}
+      />
+      <Button title="Tambah Pendapatan" onPress={() => addTransaction('income')} />
+      <Button title="Tambah Pengeluaran" onPress={() => addTransaction('expense')} />
+
+      <Text style={{ marginVertical: 20, fontSize: 18 }}>Riwayat Transaksi:</Text>
+      <FlatList
+        data={transactions}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <View style={{ padding: 10, borderBottomWidth: 1 }}>
+            <Text>{item.description}</Text>
+            <Text>{item.type === 'income' ? 'Pendapatan' : 'Pengeluaran'}: Rp {item.amount}</Text>
+            <Text>{item.date}</Text>
+          </View>
+        )}
+      />
+    </View>
+  );
+};
+
+export default FinanceTracker;
