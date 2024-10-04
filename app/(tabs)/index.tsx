@@ -1,38 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, FlatList } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useState, useEffect } from "react";
+import { View, Text, TextInput, Button, FlatList } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const FinanceTracker = () => {
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
   const [transactions, setTransactions] = useState([]);
 
   // Menyimpan data ke local storage
   const saveTransaction = async (newTransaction) => {
     try {
       const updatedTransactions = [...transactions, newTransaction];
-      await AsyncStorage.setItem('transactions', JSON.stringify(updatedTransactions));
+      await AsyncStorage.setItem(
+        "transactions",
+        JSON.stringify(updatedTransactions)
+      );
       setTransactions(updatedTransactions);
     } catch (e) {
-      console.log('Gagal menyimpan transaksi', e);
+      console.log("Gagal menyimpan transaksi", e);
     }
   };
 
   // Mengambil data dari local storage
   const loadTransactions = async () => {
     try {
-      const savedTransactions = await AsyncStorage.getItem('transactions');
+      const savedTransactions = await AsyncStorage.getItem("transactions");
       if (savedTransactions !== null) {
         setTransactions(JSON.parse(savedTransactions));
       }
     } catch (e) {
-      console.log('Gagal mengambil transaksi', e);
+      console.log("Gagal mengambil transaksi", e);
     }
   };
 
   // Mengambil transaksi saat aplikasi dibuka kembali
   useEffect(() => {
     loadTransactions();
+  }, []);
+  useEffect(() => {
+    console.log("Komponen dimuat");
+    console.log("Total pendapatan:", calculateTotal("income"));
+    console.log("Total pengeluaran:", calculateTotal("expense"));
   }, []);
 
   // Menambahkan transaksi (pendapatan atau pengeluaran)
@@ -46,8 +54,8 @@ const FinanceTracker = () => {
     };
 
     saveTransaction(newTransaction);
-    setAmount(''); // Reset input
-    setDescription('');
+    setAmount(""); // Reset input
+    setDescription("");
   };
 
   // Menghitung total pendapatan dan pengeluaran
@@ -56,12 +64,23 @@ const FinanceTracker = () => {
       .filter((transaction) => transaction.type === type)
       .reduce((total, transaction) => total + transaction.amount, 0);
   };
-
+  const sisaUang = calculateTotal("income") - calculateTotal("expense");
+  const formatToRupiah = (amount) => {
+    return amount.toLocaleString("id-ID", {
+      style: "currency",
+      currency: "IDR",
+    });
+  };
+  console.log("Sisa Uang", sisaUang);
   return (
     <View style={{ padding: 20 }}>
       <Text style={{ fontSize: 24 }}>Finance Tracker</Text>
-      <Text>Total Pendapatan: Rp {calculateTotal('income')}</Text>
-      <Text>Total Pengeluaran: Rp {calculateTotal('expense')}</Text>
+      <Text>
+        Total Pendapatan: Rp {formatToRupiah(calculateTotal("income"))}
+      </Text>
+      <Text>
+        Total Pengeluaran: Rp {formatToRupiah(calculateTotal("expense"))}
+      </Text>
 
       <TextInput
         placeholder="Deskripsi"
@@ -76,17 +95,29 @@ const FinanceTracker = () => {
         keyboardType="numeric"
         style={{ borderWidth: 1, marginBottom: 10, padding: 5 }}
       />
-      <Button title="Tambah Pendapatan" onPress={() => addTransaction('income')} />
-      <Button title="Tambah Pengeluaran" onPress={() => addTransaction('expense')} />
+      <Button
+        title="Tambah Pendapatan"
+        onPress={() => addTransaction("income")}
+      />
+      <Button
+        title="Tambah Pengeluaran"
+        onPress={() => addTransaction("expense")}
+      />
 
-      <Text style={{ marginVertical: 20, fontSize: 18 }}>Riwayat Transaksi:</Text>
+      <Text style={{ marginVertical: 20, fontSize: 18 }}>
+        Riwayat Transaksi:
+      </Text>
       <FlatList
         data={transactions}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
           <View style={{ padding: 10, borderBottomWidth: 1 }}>
             <Text>{item.description}</Text>
-            <Text>{item.type === 'income' ? 'Pendapatan' : 'Pengeluaran'}: Rp {item.amount}</Text>
+            <Text>
+              {item.type === "income" ? "Pendapatan" : "Pengeluaran"}:{" "}
+              {item && item.amount ? formatToRupiah(item.amount) : "Rp 0"}
+            </Text>
+
             <Text>{item.date}</Text>
           </View>
         )}
